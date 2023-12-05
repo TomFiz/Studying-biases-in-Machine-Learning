@@ -30,7 +30,7 @@ print('Device is',device)
 
 #...test data
 #infile = open('./TreatedData_all5.pk','rb')
-infile = open('./TreatedData_all5_neutral.pk','rb')
+infile = open('./TreatedData_all5.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -112,7 +112,7 @@ class DistillBERTClass(torch.nn.Module):
 #"./Res24_NoGen/l5e-07_saved_model.p" 
 
 
-SavedModelFile="./Res24_NoGen/l5e-07_saved_model.p"
+SavedModelFile="saved_model.p"
 
 saved_models = pickle.load( open(SavedModelFile, "rb" ) )
 
