@@ -16,8 +16,8 @@ from transformers import DistilBertModel, DistilBertTokenizer
 from sklearn import metrics
 import re
 from torch import cuda
-device = 'cuda' if cuda.is_available() else 'cpu'
 
+device = 'cuda' if cuda.is_available() else 'cpu'
 
 #device ='cpu'  #FOR DEBUGGING
 
@@ -26,7 +26,7 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 #1) get saved data
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-infile = open('./TreatedData_all5.pk','rb')
+infile = open('./TreatedData_medical_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -44,7 +44,6 @@ X_test=SavedData["X_test"]
 Masks_test=SavedData["Masks_test"]
 y_test=SavedData["y_test"]
 S_test=SavedData["g_test"]
-
 X_train=SavedData["X_train"]
 Masks_train=SavedData["Masks_train"]
 y_train=SavedData["y_train"]
@@ -98,10 +97,8 @@ model.to(device)
 import sys
 #sys.path.append('/home/laurent/Projects/2022_W2reg_package/')
 sys.path.append('/projets/xnlp/2022_W2reg_package/')
+from fit_NLP_model import *
 from W2reg_core import *
-
-
-
 
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 #4) train
@@ -141,16 +138,17 @@ lambdavar=0.00108
 
 #without any regularisation:
 lambdavar=0.
-Lists_Results=W2R_fit_NLP(model,X_train[:,:],Masks_train[:,:],y_train, S_train.numpy(), lambdavar , EPOCHS = EPOCHS_NB, BATCH_SIZE = 8,DEVICE=device,optim_lr=0.0000005)
+#Lists_Results=W2R_fit_NLP(model,X_train[:,:],Masks_train[:,:],y_train, S_train.numpy(), lambdavar , f_loss_attach=nn.BCELoss() , EPOCHS = EPOCHS_NB, BATCH_SIZE = 8,obs_for_histo=16,DEVICE=device,ID_TreatedVars=[[8,4.],[5,8.],[1,1.]],optim_lr=0.0000005,DistBetween='Predictions',test_data=tst_data)
+Lists_Results=fit_NLP_model(model,X_train[:,:],Masks_train[:,:],y_train, EPOCHS = EPOCHS_NB, BATCH_SIZE = 6,DEVICE=device,optim_lr=0.00001)
 
 
 
 plt.plot(Lists_Results['Loss'])
-plt.savefig('l'+str(lambdavar)+'_convergence_Loss.pdf')  #show()
+plt.savefig('l_convergence_Loss.pdf')  #show()
 plt.clf()
-plt.plot(Lists_Results['W2'])
-plt.savefig('l'+str(lambdavar)+'_convergence_W2.pdf')  #show()
-plt.clf()
+#plt.plot(Lists_Results['W2'])
+#plt.savefig('l'+str(lambdavar)+'_convergence_W2.pdf')  #show()
+#plt.clf()
 
 
 

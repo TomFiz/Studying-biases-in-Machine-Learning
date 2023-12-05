@@ -28,13 +28,17 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 #...test data
-infile = open('./TreatedData_all3.pk','rb')
+infile = open('./TreatedData_dj_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
-X_test=SavedData["X"][250000:,:]
-Masks_test=SavedData["Masks"][250000:,:]
-y_test=SavedData["y"][250000:,:]
+X_test=SavedData["X_test"]
+Masks_test=SavedData["Masks_test"]
+y_test=SavedData["y_test"]
+print(y_test.shape)
+#X_test=SavedData["X"][250000:,:]
+#Masks_test=SavedData["Masks"][250000:,:]
+#y_test=SavedData["y"][250000:,:]
 
 del SavedData
 
@@ -49,29 +53,19 @@ for i in range(len(data)):
 
 del data
 
-
-
-def CreateConversions_jobs_jobids(Titles):
-
-  job_2_jobid={}
-  jobid_2_job={}
-
-  Titles_set=list(set(Titles))
-  for i in range(len(Titles_set)):
-    job_2_jobid[Titles_set[i]]=i
-    jobid_2_job[i]=Titles_set[i]
-
-  return [job_2_jobid,jobid_2_job]
-
+from BertMultiClf_1_DataPrep import CreateConversions_jobs_jobids
 
 [job_2_jobid,jobid_2_job]=CreateConversions_jobs_jobids(Titles)
 
 
-column_surgeon=job_2_jobid["surgeon"]
-column_nurse=job_2_jobid["nurse"]
+column_dj=job_2_jobid["dj"]
+print(column_dj)
+print(y_test[:,column_dj])
+#column_nurse=job_2_jobid["nurse"]
 
-raws_surgeon=torch.where(y_test[:,column_surgeon])[0]
-raws_nurse=torch.where(y_test[:,column_nurse])[0]
+raws_dj=torch.where(y_test[:,column_dj])[0]
+print(raws_dj)
+#raws_nurse=torch.where(y_test[:,column_nurse])[0]
 
 
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
@@ -115,7 +109,7 @@ class DistillBERTClass(torch.nn.Module):
 
 #    saved_models = { "normal": model.to('cpu') }
 #    pickle.dump( saved_models, open( "saved_models.p", "wb" ) )
-saved_models = pickle.load( open( "l0.0_MC_saved_model.p", "rb" ) )
+saved_models = pickle.load( open( "saved_model.p", "rb" ) )
 model_cpu=saved_models["model"]
 model=model_cpu.to(device)
 
@@ -135,7 +129,8 @@ pickle.dump( saved_models, open( "saved_models.p", "wb" ) )
 #3) test
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-Curr_obsIDs=torch.cat([raws_nurse,raws_surgeon],0)
+Curr_obsIDs=torch.cat([raws_dj],0)
+print(Curr_obsIDs)
 
 
 #Curr_obsIDs=raws_surgeon   # CHANGES THE OBSERVATIONS OF INTEREST
@@ -143,7 +138,9 @@ Curr_obsIDs=torch.cat([raws_nurse,raws_surgeon],0)
 
 
 var_X_batch = X_test[Curr_obsIDs,:].to(device)
+print(var_X_batch.shape)
 Masks_batch = Masks_test[Curr_obsIDs,:].to(device)
+print(Masks_batch.shape)
 var_y_batch = y_test[Curr_obsIDs,:].float()  #added in the 1d case
 
 with torch.no_grad():
