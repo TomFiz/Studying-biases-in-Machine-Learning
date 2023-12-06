@@ -30,7 +30,7 @@ print('Device is',device)
 
 #...test data
 #infile = open('./TreatedData_all5.pk','rb')
-infile = open('./TreatedData_all5.pk','rb')
+infile = open('./TreatedData_medical_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -46,7 +46,7 @@ bio_test=SavedData["bio_test"]
 job_2_jobid=SavedData['job_2_jobid']
 jobid_2_job=SavedData['jobid_2_job']
  
- 
+list_jobs_used=['chiropractor','dentist','nurse','physician','surgeon']
 del SavedData
 
 
@@ -62,7 +62,7 @@ class DistillBERTClass(torch.nn.Module):
         self.distill_bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
         self.drop = torch.nn.Dropout(0.3)
         self.pre_out = torch.nn.Linear(768, 100)
-        self.out = torch.nn.Linear(100, 28)
+        self.out = torch.nn.Linear(100, len(list_jobs_used))
 
     def forward(self, ids, mask):
         distilbert_output = self.distill_bert(ids, mask)
@@ -128,7 +128,6 @@ model=model_cpu.to(device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 n_test=y_test.shape[0]  #  -> 138862 in total
-
 Curr_obsIDs=np.arange(n_test)
 np.random.shuffle(Curr_obsIDs)
 #Curr_obsIDs=Curr_obsIDs[:10000]
@@ -159,10 +158,11 @@ y_true=var_y_select
 
 y_pred_labels=torch.argmax(y_pred,dim=1)
 y_true_labels=torch.argmax(y_true,dim=1)
-
-print('mean error:',torch.mean(torch.abs(y_pred-y_true)))
-
-print('mean pred accuracy:',torch.mean(1.*(y_pred_labels==y_true_labels)))
+print(sum(y_pred_labels>6))
+print(sum(y_true_labels>6))
+#Weird error here: decomment later
+#print('mean error:',torch.mean(torch.abs(y_pred-y_true)))
+#print('mean pred accuracy:',torch.mean(1.*(y_pred_labels==y_true_labels)))
 
 
 
@@ -171,8 +171,8 @@ print('mean pred accuracy:',torch.mean(1.*(y_pred_labels==y_true_labels)))
 
 import sklearn
 
-lst_jobs=list(jobid_2_job.values())
-
+#lst_jobs=list(jobid_2_job.values())
+lst_jobs=list_jobs_used
 
 y_pred_labels=torch.argmax(y_pred,dim=1)
 y_true_labels=torch.argmax(y_true,dim=1)
@@ -195,7 +195,6 @@ plt.clf()
 np.savetxt("ConfMat.csv", confusionMatrix, delimiter=",",fmt='%5.4f')
 
 #confusion matrix - gender gap
-
 
 
 y_pred_labels=torch.argmax(y_pred,dim=1)

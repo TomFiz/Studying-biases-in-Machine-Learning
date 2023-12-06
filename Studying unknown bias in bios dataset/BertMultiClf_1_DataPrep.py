@@ -139,12 +139,14 @@ def truncation_X(X_raw, n):
 X_raw_sn=[]
 Titles_sn=[]
 Gen_sn=[]
+list_jobs_used=['chiropractor','dentist','nurse','physician','surgeon']
 
 for i in range(len(X_raw)):
-    truncated_sentence=truncation_sentence(pre_process_text(X_raw[i]),255)  #there will have a maximum of 255 words to guess the job
-    X_raw_sn.append(truncated_sentence)
-    Titles_sn.append(Titles[i])
-    Gen_sn.append(Gen[i])
+    if Titles[i] in list_jobs_used:
+      truncated_sentence=truncation_sentence(pre_process_text(X_raw[i]),255)  #there will have a maximum of 255 words to guess the job
+      X_raw_sn.append(truncated_sentence)
+      Titles_sn.append(Titles[i])
+      Gen_sn.append(Gen[i])
     
 print(len(X_raw),' -> ',len(X_raw_sn))
      
@@ -172,7 +174,8 @@ def CreateConversions_jobs_jobids(Titles):
   job_2_jobid={}
   jobid_2_job={}
 
-  Titles_set, _ = np.unique(Titles, return_index=True)
+  #Titles_set, _ = np.unique(Titles, return_index=True)
+  Titles_set=list_jobs_used
   for i in range(len(Titles_set)):
     job_2_jobid[Titles_set[i]]=i
     jobid_2_job[i]=Titles_set[i]
@@ -200,8 +203,10 @@ list_selected_ids=[]
 n=len(X_raw_sn)
 largest_tokens_nb=0
 
+
+
 for i in range(n):
-  if Titles_sn[i] in ['chiropractor','dentist','nurse','physician','surgeon']:
+  if Titles_sn[i] in list_jobs_used:
     print(i,'/',n,'    -    ',largest_tokens_nb)
 
     [ids,mask]=get_input(i,X_raw_sn,tokenizer,255)
@@ -246,7 +251,7 @@ pickle.dump(data2save, open( "TreatedData_medical_all.pk", "wb" ) )
 
 #make sure that the amount of test data in each group is well balanced
 
-for i in range(28):
+for i in range(len(list_jobs_used)):
   NbFemales=( 1 * ((y[:,i]==1)*(g[:]==0)) ).sum().item()
   NbMales=( 1 * ((y[:,i]==1)*(g[:]==1)) ).sum().item()
   if NbFemales>1000 and NbMales>1000:

@@ -56,14 +56,14 @@ del SavedData
 #2) define the model
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-
+list_jobs_used=['chiropractor','dentist','nurse','physician','surgeon']
 class DistillBERTClass(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.distill_bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
         self.drop = torch.nn.Dropout(0.3)
         self.pre_out = torch.nn.Linear(768, 100)
-        self.out = torch.nn.Linear(100, 28)
+        self.out = torch.nn.Linear(100, len(list_jobs_used))
 
     def forward(self, ids, mask):
         distilbert_output = self.distill_bert(ids, mask)
