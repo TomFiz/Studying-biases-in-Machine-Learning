@@ -78,7 +78,8 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
             #7) save pertinent information to check the convergence
             locLoss=loss.item()
             Lists_Results['Loss'].append(locLoss)
-            print("epoch "+str(epoch)+" -- batchNb "+str(batchNb)+": Loss="+str(Lists_Results['Loss'][-1]))
+            if batchNb%100==0:
+              print("epoch "+str(epoch)+" -- batchNb "+str(batchNb)+"Total number of batch:"+str(n/BATCH_SIZE)+": Loss="+str(Lists_Results['Loss'][-1]))
 
         #update the epoch number
         epoch+=1

@@ -177,7 +177,7 @@ lst_jobs=list_jobs_used
 y_pred_labels=torch.argmax(y_pred,dim=1)
 y_true_labels=torch.argmax(y_true,dim=1)
 
-confusionMatrix=sklearn.metrics.confusion_matrix(y_true_labels,y_pred_labels,normalize='pred')
+confusionMatrix=sklearn.metrics.confusion_matrix(y_true_labels,y_pred_labels,normalize='true')
 
 ax=plt.axes()
 plt.imshow(confusionMatrix,cmap='nipy_spectral',vmin=0.,vmax=1.0)
@@ -203,8 +203,8 @@ y_true_labels=torch.argmax(y_true,dim=1)
 Lst0=np.where(S_select<0.5)[0]
 Lst1=np.where(S_select>0.5)[0]
 
-confusionMatrix0=sklearn.metrics.confusion_matrix(y_true_labels[Lst0],y_pred_labels[Lst0],normalize='pred')
-confusionMatrix1=sklearn.metrics.confusion_matrix(y_true_labels[Lst1],y_pred_labels[Lst1],normalize='pred')
+confusionMatrix0=sklearn.metrics.confusion_matrix(y_true_labels[Lst0],y_pred_labels[Lst0],normalize='true')
+confusionMatrix1=sklearn.metrics.confusion_matrix(y_true_labels[Lst1],y_pred_labels[Lst1],normalize='true')
 
 
 
