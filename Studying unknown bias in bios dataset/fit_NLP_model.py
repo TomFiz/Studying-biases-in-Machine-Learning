@@ -5,15 +5,13 @@ import torch.nn.functional as F
 import torch.utils.data
 import torchvision.models as models
 from collections import OrderedDict
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import time
 import pickle
 import pandas
 import numpy as np # to handle matrix and data operation
 import matplotlib.pyplot as plt   #image visualisation
 import scipy.stats as st
-
-
 
 def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() , EPOCHS = 5, BATCH_SIZE = 32,DEVICE='cpu',optim_lr=0.0001):
     """
@@ -25,7 +23,8 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
 
     outputdatadim=len(y_train.shape)-1  #dimension of the output data (-1 takes into account the fact that the first dimension corresponds to the observations)
 
-    optimizer = torch.optim.Adam(model.parameters(),lr=optim_lr) #,lr=0.001, betas=(0.9,0.999))
+    optimizer = torch.optim.Adam(model.parameters(), lr=optim_lr) #,lr=0.001, betas=(0.9,0.999))
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
 
     model.train()
 
@@ -33,7 +32,6 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
 
     Lists_Results={}
     Lists_Results['Loss']=[]          #loss of the data attachement term
-
 
     epoch=0
     while epoch<EPOCHS:
@@ -58,7 +56,6 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
             elif outputdatadim==1:
               y_batch = y_train[Curr_obsIDs,:].float()
 
-
             #2.3) set the NN gradient to zero
             optimizer.zero_grad()
 
@@ -78,12 +75,16 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
             #7) save pertinent information to check the convergence
             locLoss=loss.item()
             Lists_Results['Loss'].append(locLoss)
-            if batchNb%100==0:
-              print("epoch "+str(epoch)+" -- batchNb "+str(batchNb)+"Total number of batch:"+str(n/BATCH_SIZE)+": Loss="+str(Lists_Results['Loss'][-1]))
+            if batchNb%10==0:
+              print("epoch "+str(epoch)+" -- batchNb "+str(batchNb)+" / "+str(n/BATCH_SIZE)+": Loss="+str(Lists_Results['Loss'][-1]))
+              current_lr = optimizer.param_groups[0]['lr']
+              print(f"Epoch {epoch}, Batch {batchNb}: Learning Rate = {current_lr}")
+
+            scheduler.step(Lists_Results['Loss'][-1]) # Update learning rate
+            
 
         #update the epoch number
         epoch+=1
-
 
     model_cpu=model.to('cpu')
     saved_models = { "model": model_cpu }
