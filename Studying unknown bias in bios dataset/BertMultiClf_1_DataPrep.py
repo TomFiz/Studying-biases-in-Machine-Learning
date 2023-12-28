@@ -24,7 +24,6 @@ for i in range(len(data)):
     Titles[i] = data[i]["title"]
     Gen[i] = data[i]["gender"]
 
-
 #obs_of_interest=10
 
 #print(X_raw[obs_of_interest])
@@ -179,6 +178,7 @@ def CreateConversions_jobs_jobids(Titles):
 
   return [job_2_jobid,jobid_2_job]
 
+#Titles = ['chiropractor','dentist','nurse','physician','surgeon']
 [job_2_jobid,jobid_2_job]=CreateConversions_jobs_jobids(Titles)
 
 def get_output_id(input_id,lst_outputs,job_2_jobid):
@@ -201,7 +201,7 @@ n=len(X_raw_sn)
 largest_tokens_nb=0
 
 for i in range(n):
-  if Titles_sn[i] in ['chiropractor','dentist','nurse','physician','surgeon']:
+  #if Titles_sn[i] in Titles:
     print(i,'/',n,'    -    ',largest_tokens_nb)
 
     [ids,mask]=get_input(i,X_raw_sn,tokenizer,255)
@@ -242,11 +242,11 @@ for i in range(m):
 
 
 data2save ={"X":X,"Masks":Masks,"y":y,'g':g,'bio':X_raw_sn,"job_2_jobid":job_2_jobid,"jobid_2_job":jobid_2_job}
-pickle.dump(data2save, open( "TreatedData_medical_all.pk", "wb" ) )
+pickle.dump(data2save, open( "TreatedData_all.pk", "wb" ) )
 
 #make sure that the amount of test data in each group is well balanced
 
-for i in range(28):
+for i in range(y.size(1)):
   NbFemales=( 1 * ((y[:,i]==1)*(g[:]==0)) ).sum().item()
   NbMales=( 1 * ((y[:,i]==1)*(g[:]==1)) ).sum().item()
   if NbFemales>1000 and NbMales>1000:
@@ -291,7 +291,7 @@ for i in range(len(TrainID)):
   bio_train.append(X_raw_sn[TrainID[i]])
 
 data2save ={"X_test":X_test,"Masks_test":Masks_test,"y_test":y_test,'g_test':g_test,'bio_test':bio_test , "X_train":X_train,"Masks_train":Masks_train,"y_train":y_train,'g_train':g_train,'bio_train':bio_train , "job_2_jobid":job_2_jobid,"jobid_2_job":jobid_2_job}
-pickle.dump(data2save, open( "TreatedData_medical_test_train.pk", "wb" ) )
+pickle.dump(data2save, open( "TreatedData_test_train.pk", "wb" ) )
 
    
 """

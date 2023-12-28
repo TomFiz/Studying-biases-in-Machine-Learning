@@ -11,7 +11,7 @@ import io
 
 import torch
 import transformers
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 from transformers import DistilBertModel, DistilBertTokenizer
 from sklearn import metrics
@@ -29,8 +29,7 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 #...test data
-#infile = open('./TreatedData_all5.pk','rb')
-infile = open('./TreatedData_all5.pk','rb')
+infile = open('./TreatedData_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -45,7 +44,9 @@ bio_test=SavedData["bio_test"]
 
 job_2_jobid=SavedData['job_2_jobid']
 jobid_2_job=SavedData['jobid_2_job']
- 
+lst_jobs=list(jobid_2_job.values())
+lst_jobids=list(job_2_jobid.values())
+
  
 del SavedData
 
@@ -133,27 +134,15 @@ Curr_obsIDs=np.arange(n_test)
 np.random.shuffle(Curr_obsIDs)
 #Curr_obsIDs=Curr_obsIDs[:10000]
 
-
-
-
-
-var_X_select = X_test[Curr_obsIDs,:]
-Masks_select = Masks_test[Curr_obsIDs,:]
+var_X_select = X_test[Curr_obsIDs,:].to(device)
+Masks_select = Masks_test[Curr_obsIDs,:].to(device)
 var_y_select = y_test[Curr_obsIDs,:].float()  #added in the 1d case
 S_select = S_test[Curr_obsIDs]
 
-import sys
-sys.path.append('/home/laurent/Projects/2022_W2reg_package/')
-from W2reg_misc import *
-
-
-
+from W2reg_misc import LargeDatasetPred_nlp
 output=LargeDatasetPred_nlp(model,var_X_select[:,:],Masks_select[:,:],64,DEVICE=device)
 
-#with torch.no_grad():
-#  output = model(ids=var_X_select[:,:150], mask=Masks_select[:,:150])
-
-
+# Use the tensor of indices to index `output`
 y_pred=output.to('cpu')
 y_true=var_y_select
 
@@ -170,9 +159,6 @@ print('mean pred accuracy:',torch.mean(1.*(y_pred_labels==y_true_labels)))
 #confusion matrix
 
 import sklearn
-
-lst_jobs=list(jobid_2_job.values())
-
 
 y_pred_labels=torch.argmax(y_pred,dim=1)
 y_true_labels=torch.argmax(y_true,dim=1)
@@ -272,14 +258,6 @@ for jobID in range(len(lst_jobs)):
   FemalesInClasses=len(torch.where(y_true_labels[Lst0]==jobID)[0])
   print(jobid_2_job[jobID]+': '+str(MalesInClasses+FemalesInClasses)+' '+str(np.round(100.*FemalesInClasses/(MalesInClasses+FemalesInClasses),1)))
   
-
-
-
-
-
-
-
-
 
 #other stuffs
   

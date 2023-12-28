@@ -28,7 +28,7 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 #...test data
-infile = open('./TreatedData_dj_test_train.pk','rb')
+infile = open('./TreatedData_medical_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -44,27 +44,26 @@ del SavedData
 
 #... get occupations
 
-data = pickle.load(open('BIOS.pkl','rb'))
+#data = pickle.load(open('BIOS.pkl','rb'))
 
-Titles = ['' for i in range(len(data))]
+Titles = ['chiropractor','dentist','nurse','physician','surgeon']
 
-for i in range(len(data)):
-    Titles[i] = data[i]["title"]
+#for i in range(len(data)):
+    #Titles[i] = data[i]["title"]
 
-del data
+#del data
 
 from BertMultiClf_1_DataPrep import CreateConversions_jobs_jobids
 
 [job_2_jobid,jobid_2_job]=CreateConversions_jobs_jobids(Titles)
 
 
-column_dj=job_2_jobid["dj"]
-print(column_dj)
-print(y_test[:,column_dj])
-#column_nurse=job_2_jobid["nurse"]
+columns=job_2_jobid['chiropractor','dentist','nurse','physician','surgeon']
+print(columns)
+print(y_test[:,columns])
 
-raws_dj=torch.where(y_test[:,column_dj])[0]
-print(raws_dj)
+raws=torch.where(y_test[:,columns])[0]
+print(raws)
 #raws_nurse=torch.where(y_test[:,column_nurse])[0]
 
 
@@ -129,12 +128,8 @@ pickle.dump( saved_models, open( "saved_models.p", "wb" ) )
 #3) test
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-Curr_obsIDs=torch.cat([raws_dj],0)
-print(Curr_obsIDs)
-
-
-#Curr_obsIDs=raws_surgeon   # CHANGES THE OBSERVATIONS OF INTEREST
-
+Curr_obsIDs=torch.cat([raws],0)
+#print(Curr_obsIDs)
 
 
 var_X_batch = X_test[Curr_obsIDs,:].to(device)
