@@ -120,6 +120,7 @@ saved_models = pickle.load( open(SavedModelFile, "rb" ) )
 
 
 model_cpu=saved_models["model"]
+model = nn.DataParallel(model_cpu)
 model=model_cpu.to(device)
 
 

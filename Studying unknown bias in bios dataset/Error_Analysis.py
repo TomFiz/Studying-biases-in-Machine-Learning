@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import torch
 from sklearn.cluster import KMeans
 from transformers import DistilBertModel, DistilBertTokenizer
+from sklearn.decomposition import PCA
+
 
 # Load the pkl file
 def make_analysis(group,n_clusters):
@@ -13,25 +15,28 @@ def make_analysis(group,n_clusters):
         X = error['X']
         y = error['y']
         bios = error['bio']
-        #y_pred = error['predicted_job']
+        y_pred = error['predicted_job']
+        jobid_2_job = error['jobid_2_job']
 
     # plot number of errors per job
     nbr_errors_true = np.sum(y, axis = 0) 
     plt.figure()
-    plt.bar(np.arange(len(nbr_errors_true)), nbr_errors_true)
+    plt.bar([jobid_2_job[i] for i in np.arange(len(nbr_errors_true))], nbr_errors_true)
     plt.xlabel('True Job')
+    plt.xticks(rotation=90)
     plt.ylabel('Number of errors')
     plt.title('Number of errors per true job for group ' + str(group))
     plt.savefig('errors_per_job'+str(group)+'.pdf')
 
     # plot number of errors per predicted job
-    #nbr_errors_pred = np.sum(y_pred, axis = 0)
-    #plt.figure()
-    #plt.bar(np.arange(len(nbr_errors_pred)), nbr_errors_pred)
-    #plt.xlabel('Predicted Job')
-    #plt.ylabel('Number of errors')
-    #plt.title('Number of errors per predicted job for group ' + str(group))
-    #plt.savefig('errors_per_predicted_job'+str(group)+'.pdf')
+    nbr_errors_pred = np.bincount(y_pred)
+    plt.figure()
+    plt.bar([jobid_2_job[i] for i in np.arange(len(nbr_errors_pred))], nbr_errors_pred)
+    plt.xlabel('Predicted Job')
+    plt.xticks(rotation=90)
+    plt.ylabel('Number of errors')
+    plt.title('Number of errors per predicted job for group ' + str(group))
+    plt.savefig('errors_per_predicted_job'+str(group)+'.pdf')
 
 
     # Load the DistilBert model and tokenizer
@@ -66,9 +71,12 @@ def make_analysis(group,n_clusters):
     # Get embeddings for all input sentences
     embeddings = get_embeddings(bios, tokenizer, Max_len=512)
 
+    pca = PCA(n_components=2)  # Reduce to 2 dimensions
+    reduced_embeddings = pca.fit_transform(embeddings)
+
     # Cluster the embeddings
     kmeans = KMeans(n_clusters=n_clusters)  # Use 5 clusters as an example
-    kmeans.fit(embeddings)
+    kmeans.fit(reduced_embeddings)
     
     # Get the cluster labels for each bio
     labels = kmeans.labels_

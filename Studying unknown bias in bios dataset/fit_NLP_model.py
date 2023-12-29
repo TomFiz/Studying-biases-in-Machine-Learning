@@ -24,7 +24,7 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
     outputdatadim=len(y_train.shape)-1  #dimension of the output data (-1 takes into account the fact that the first dimension corresponds to the observations)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=optim_lr) #,lr=0.001, betas=(0.9,0.999))
-    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=250, verbose=True)
 
     model.train()
 
@@ -79,12 +79,13 @@ def fit_NLP_model(model,X_train,Masks_train,y_train, f_loss_attach=nn.MSELoss() 
             #7) save pertinent information to check the convergence
             locLoss=loss.item()
             Lists_Results['Loss'].append(locLoss)
+
             if batchNb%10==0:
               print("epoch "+str(epoch)+" -- batchNb "+str(batchNb)+" / "+str(n/BATCH_SIZE)+": Loss="+str(Lists_Results['Loss'][-1]))
               current_lr = optimizer.param_groups[0]['lr']
               print(f"Epoch {epoch}, Batch {batchNb}: Learning Rate = {current_lr}")
 
-            #scheduler.step(Lists_Results['Loss'][-1]) # Update learning rate
+            scheduler.step(Lists_Results['Loss'][-1]) # Update learning rate
             
 
         #update the epoch number
