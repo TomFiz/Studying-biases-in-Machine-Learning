@@ -7,8 +7,8 @@ import random
 import math
 import copy
 import io
-
-
+import os
+import tempfile
 import torch
 import transformers
 from torch.utils.data import TensorDataset, DataLoader
@@ -193,6 +193,23 @@ Lst1=np.where(S_select>0.5)[0]
 confusionMatrix0=sklearn.metrics.confusion_matrix(y_true_labels[Lst0],y_pred_labels[Lst0],normalize='pred')
 confusionMatrix1=sklearn.metrics.confusion_matrix(y_true_labels[Lst1],y_pred_labels[Lst1],normalize='pred')
 
+Lst0_error=np.where(y_true_labels[Lst0]!=y_pred_labels[Lst0])[0]
+print('number of errors in group 0:',len(Lst0_error))
+Lst1_error=np.where(y_true_labels[Lst1]!=y_pred_labels[Lst1])[0]
+print('number of errors in group 1:',len(Lst1_error))
+
+# Load the data
+with open("TreatedData_all.pk", "rb") as f:
+    data = pickle.load(f)
+
+# Select rows from each item in the dictionary
+data2save_0 = {key: np.array(value)[Lst0_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
+data2save_1 = {key: np.array(value)[Lst1_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
+data2save_0['predicted_job'] = y_pred_labels[Lst0_error]
+data2save_1['predicted_job'] = y_pred_labels[Lst1_error]
+
+pickle.dump(data2save_0, open( "Treated_Error0.pkl", "wb" ) )
+pickle.dump(data2save_1, open( "Treated_Error1.pkl", "wb" ) )
 
 
 ax=plt.axes()
