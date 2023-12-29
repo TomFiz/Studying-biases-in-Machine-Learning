@@ -26,7 +26,7 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 #1) get saved data
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-infile = open('./TreatedData_medical_test_train.pk','rb')
+infile = open('./TreatedData_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -77,6 +77,7 @@ class DistillBERTClass(torch.nn.Module):
 
 
 model = DistillBERTClass()
+model = torch.nn.DataParallel(model)
 model.to(device)
 
 #... test it
@@ -98,7 +99,7 @@ import sys
 #sys.path.append('/home/laurent/Projects/2022_W2reg_package/')
 sys.path.append('/projets/xnlp/2022_W2reg_package/')
 from fit_NLP_model import *
-from W2reg_core import *
+#from W2R_fit_NLP import *
 
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 #4) train
@@ -121,7 +122,7 @@ tst_data['known']=False
 #lambdavar=0.0001
 #lambdavar=0.001
 
-EPOCHS_NB=1
+EPOCHS_NB=20
 #EPOCHS_NB=5
 
 
@@ -139,7 +140,7 @@ lambdavar=0.00108
 #without any regularisation:
 lambdavar=0.
 #Lists_Results=W2R_fit_NLP(model,X_train[:,:],Masks_train[:,:],y_train, S_train.numpy(), lambdavar , f_loss_attach=nn.BCELoss() , EPOCHS = EPOCHS_NB, BATCH_SIZE = 8,obs_for_histo=16,DEVICE=device,ID_TreatedVars=[[8,4.],[5,8.],[1,1.]],optim_lr=0.0000005,DistBetween='Predictions',test_data=tst_data)
-Lists_Results=fit_NLP_model(model,X_train[:,:],Masks_train[:,:],y_train, EPOCHS = EPOCHS_NB, BATCH_SIZE = 128,DEVICE=device,optim_lr=0.00001)
+Lists_Results=fit_NLP_model(model,X_train[:,:],Masks_train[:,:],y_train, EPOCHS = EPOCHS_NB, BATCH_SIZE = 512,DEVICE=device,optim_lr=0.00001)
 
 
 

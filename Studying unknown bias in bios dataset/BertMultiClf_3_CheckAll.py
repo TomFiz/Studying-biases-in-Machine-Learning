@@ -7,11 +7,11 @@ import random
 import math
 import copy
 import io
-
-
+import os
+import tempfile
 import torch
 import transformers
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 import torch.nn as nn
 from transformers import DistilBertModel, DistilBertTokenizer
 from sklearn import metrics
@@ -29,8 +29,7 @@ print('Device is',device)
 #+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
 #...test data
-#infile = open('./TreatedData_all5.pk','rb')
-infile = open('./TreatedData_medical_test_train.pk','rb')
+infile = open('./TreatedData_test_train.pk','rb')
 SavedData = pickle.load(infile)
 infile.close()
 
@@ -45,8 +44,10 @@ bio_test=SavedData["bio_test"]
 
 job_2_jobid=SavedData['job_2_jobid']
 jobid_2_job=SavedData['jobid_2_job']
+lst_jobs=list(jobid_2_job.values())
+lst_jobids=list(job_2_jobid.values())
+
  
-list_jobs_used=['chiropractor','dentist','nurse','physician','surgeon']
 del SavedData
 
 
@@ -62,7 +63,7 @@ class DistillBERTClass(torch.nn.Module):
         self.distill_bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
         self.drop = torch.nn.Dropout(0.3)
         self.pre_out = torch.nn.Linear(768, 100)
-        self.out = torch.nn.Linear(100, len(list_jobs_used))
+        self.out = torch.nn.Linear(100, len(lst_jobs))
 
     def forward(self, ids, mask):
         distilbert_output = self.distill_bert(ids, mask)
@@ -119,6 +120,7 @@ saved_models = pickle.load( open(SavedModelFile, "rb" ) )
 
 
 model_cpu=saved_models["model"]
+model = nn.DataParallel(model_cpu)
 model=model_cpu.to(device)
 
 
@@ -132,27 +134,15 @@ Curr_obsIDs=np.arange(n_test)
 np.random.shuffle(Curr_obsIDs)
 #Curr_obsIDs=Curr_obsIDs[:10000]
 
-
-
-
-
-var_X_select = X_test[Curr_obsIDs,:]
-Masks_select = Masks_test[Curr_obsIDs,:]
+var_X_select = X_test[Curr_obsIDs,:].to(device)
+Masks_select = Masks_test[Curr_obsIDs,:].to(device)
 var_y_select = y_test[Curr_obsIDs,:].float()  #added in the 1d case
 S_select = S_test[Curr_obsIDs]
 
-import sys
-sys.path.append('/home/laurent/Projects/2022_W2reg_package/')
-from W2reg_misc import *
-
-
-
+from W2reg_misc import LargeDatasetPred_nlp
 output=LargeDatasetPred_nlp(model,var_X_select[:,:],Masks_select[:,:],64,DEVICE=device)
 
-#with torch.no_grad():
-#  output = model(ids=var_X_select[:,:150], mask=Masks_select[:,:150])
-
-
+# Use the tensor of indices to index `output`
 y_pred=output.to('cpu')
 y_true=var_y_select
 
@@ -170,9 +160,6 @@ print(sum(y_true_labels>6))
 #confusion matrix
 
 import sklearn
-
-#lst_jobs=list(jobid_2_job.values())
-lst_jobs=list_jobs_used
 
 y_pred_labels=torch.argmax(y_pred,dim=1)
 y_true_labels=torch.argmax(y_true,dim=1)
@@ -203,9 +190,26 @@ y_true_labels=torch.argmax(y_true,dim=1)
 Lst0=np.where(S_select<0.5)[0]
 Lst1=np.where(S_select>0.5)[0]
 
-confusionMatrix0=sklearn.metrics.confusion_matrix(y_true_labels[Lst0],y_pred_labels[Lst0],normalize='true')
-confusionMatrix1=sklearn.metrics.confusion_matrix(y_true_labels[Lst1],y_pred_labels[Lst1],normalize='true')
+confusionMatrix0=sklearn.metrics.confusion_matrix(y_true_labels[Lst0],y_pred_labels[Lst0],normalize='pred')
+confusionMatrix1=sklearn.metrics.confusion_matrix(y_true_labels[Lst1],y_pred_labels[Lst1],normalize='pred')
 
+Lst0_error=np.where(y_true_labels[Lst0]!=y_pred_labels[Lst0])[0]
+print('number of errors in group 0:',len(Lst0_error))
+Lst1_error=np.where(y_true_labels[Lst1]!=y_pred_labels[Lst1])[0]
+print('number of errors in group 1:',len(Lst1_error))
+
+# Load the data
+with open("TreatedData_all.pk", "rb") as f:
+    data = pickle.load(f)
+
+# Select rows from each item in the dictionary
+data2save_0 = {key: np.array(value)[Lst0_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
+data2save_1 = {key: np.array(value)[Lst1_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
+data2save_0['predicted_job'] = y_pred_labels[Lst0_error]
+data2save_1['predicted_job'] = y_pred_labels[Lst1_error]
+
+pickle.dump(data2save_0, open( "Treated_Error0.pkl", "wb" ) )
+pickle.dump(data2save_1, open( "Treated_Error1.pkl", "wb" ) )
 
 
 ax=plt.axes()
@@ -271,14 +275,6 @@ for jobID in range(len(lst_jobs)):
   FemalesInClasses=len(torch.where(y_true_labels[Lst0]==jobID)[0])
   print(jobid_2_job[jobID]+': '+str(MalesInClasses+FemalesInClasses)+' '+str(np.round(100.*FemalesInClasses/(MalesInClasses+FemalesInClasses),1)))
   
-
-
-
-
-
-
-
-
 
 #other stuffs
   
