@@ -7,7 +7,8 @@ from transformers import DistilBertModel, DistilBertTokenizer
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 import pandas as pd
-from sklearn.metrics import pairwise_distances_argmin_min
+from sklearn.metrics import pairwise_distances_argmin
+from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -18,6 +19,7 @@ def make_analysis(group,n_clusters):
         error = pickle.load(f)
         X = error['X_test']
         y = error['y_test']
+        g = error['g_test']
         bios = error['bio_test']
         y_pred = error['predicted_job']
         jobid_2_job = error['jobid_2_job']
@@ -89,7 +91,7 @@ def make_analysis(group,n_clusters):
     embeddings = pd.read_csv('embeddings_'+str(group)+'.csv', header=None).values
 
     # Reduce the dimensionality of the embeddings
-    pca = PCA(n_components=10)
+    pca = PCA(n_components=5)
     reduced_embeddings = pca.fit_transform(embeddings)
 
     # Cluster the embeddings
@@ -102,36 +104,78 @@ def make_analysis(group,n_clusters):
     centroids = pca.inverse_transform(centroids_reduced)
 
     # Find the closest data points to the centroids
-    workrelated_words = ["Outsiders", "Women", "Creatives", "Caregivers", "Minorities", "Immigrants", "Elderly", "LGBTQ+", "Disabled",  "Religious", "Racial", "Ethnic", "Indigenous", "Single Parents", "Youth", "Refugees", "Homeless", "Educationally Disadvantaged", "Low-Income", "Nonconformists", "Mental Health", "Introverts", "Ex-Convicts", "Overweight", "Underprivileged", "Unemployed", "Displaced", "Unwed Mothers", "Divorced", "Non-religious", "Non-native Speakers", "Non-heteronormative", "Non-binary", "Transgender", "Intersectional", "Working-class", "Non-cisnormative", "Economically Disadvantaged", "Differently-gendered", "Sexual Minorities", "Cultural Minorities", "Socially Isolated", "Economically Marginalized", "Stigmatized", "Non-traditional Families", "Non-English Speakers", "Non-citizens", "Undocumented", "Alternative Lifestyles", "Non-affiliated"]    
-    keywords_embdeddings = get_embeddings(workrelated_words, tokenizer, Max_len=512)
+    n_split = 1
+    #workrelated_words_1 = ["Outsiders", "Women", "Creatives", "Caregivers", "Minorities",
+                        #"Immigrants", "Elderly", "LGBTQ+", "Disabled",  "Religious", "Racial", 
+                        #"Ethnic", "Indigenous", "Youth", "Refugees", "Homeless", "Low-Income", 
+                        #"Nonconformists", "Introverts", "Overweight", "Underprivileged", "Rich",
+                        #"Unemployed", "Divorced", "Non-religious", "Mother",
+                        #"Non-native", "Non-binary", "Transgender", "Intersectional", "Working-class",
+                        #"Disadvantaged", "Minorities", "Isolated", "Marginalized",  "Sex",
+                        #"Non-citizens", "Children", "Student", "PhD", "Graduate", "Undergraduate"]
+    workrelated_words_1 = ["Sex","Ethnic","Age","Parent","Divorced","PhD","Rich","Health","Religion",
+                           "Veteran","Gender","Race","Old","Married","Poor","Handicap"]
+    #workrelated_words_2 = ["Gender","Race","Old","Care","Married","Poor","Gay","Health","Handicap"]
+    #workrelated_words_3 = ["Teamwork", "Inclusive", "Innovative", "Flexible", "Young", "Remote", "Digital", "Adaptable", "Resilient", "Experience", "Empathetic", "Tech", "Diverse"]
+    workrelated_words_list = np.array([workrelated_words_1])
+    #np.random.shuffle(workrelated_words)
+    #workrelated_words_list = np.array_split(workrelated_words, n_split)
+    print("Number of words in split : ",len(workrelated_words_list[0]))
+    print("Number of splits : ",len(workrelated_words_list))
+    print("Computing splits")
+    centroid_keywords = np.full((n_clusters,n_split),"", dtype="<U20")
+    for k in range(n_split):
+        workrelated_words_split=list(workrelated_words_list[k])
+        keywords_embeddings = get_embeddings(workrelated_words_split, tokenizer, Max_len=512)
+        reduced_keywords_embeddings = pca.transform(keywords_embeddings)
+        closest_keywords_id = pairwise_distances_argmin(centroids_reduced, reduced_keywords_embeddings, metric = "manhattan")
+        closest_keywords_id_indiv = pairwise_distances_argmin(reduced_embeddings, reduced_keywords_embeddings, metric = "manhattan")
+        closest_keywords_indiv = [workrelated_words_split[closest_keywords_id_indiv[j]] for j in range(len(closest_keywords_id_indiv))]
+        for n in tqdm(range(n_clusters)):
+            # get the closest keyword to the centroid
+            closest_keyword = workrelated_words_split[closest_keywords_id[n]]
+            centroid_keywords[n][k] = closest_keyword
+            
 
-    closest_keywords, _ = pairwise_distances_argmin_min(centroids, keywords_embdeddings)
-    centroids_keywords = [workrelated_words[i] for i in closest_keywords]  
+    # save centroids, keywords, various infos to csv
+    closest_points = pd.DataFrame(columns = ['cluster','cluster keyword', 'individual keyword', 'sex', 'job','predicted job', 'bio'])
+    whole_clusters = pd.DataFrame(columns = ['cluster','cluster keyword', 'individual keyword', 'sex', 'job','predicted job', 'bio'])
+    NN_keywords = NearestNeighbors(n_neighbors=12, algorithm='ball_tree').fit(reduced_embeddings)
+    print(len(embeddings))
 
-    closest_points = pd.DataFrame(columns = ['cluster','keyword', 'job','predicted job', 'bio'])
-    whole_clusters = pd.DataFrame(columns = ['cluster','keyword', 'job','predicted job', 'bio']) 
+    closest_bios_to_keywords = pd.DataFrame(columns = ['keyword', 'bio'])
+    for i in range(len(keywords_embeddings)) :
+        distances, indices = NN_keywords.kneighbors([reduced_keywords_embeddings[i]])
+        print(workrelated_words_1[i], reduced_keywords_embeddings[i], distances)
+        
+        for j in range(12):
+            closest_bios_to_keywords = closest_bios_to_keywords.append({'keyword': workrelated_words_1[i], 'bio': bios[indices[0][j]]}, ignore_index=True)
+    
+    closest_bios_to_keywords.to_csv('closest_bios_to_keywords_'+str(group)+'.csv')
 
     print('Computing clusters')
     for i in tqdm(range(n_clusters)):
+        keywords = list(centroid_keywords[i])[0]
         cluster_bios = [bios[j] for j in range(len(bios)) if labels[j] == i]
-        cluster_embeddings = [embeddings[j] for j in range(len(bios)) if labels[j] == i]
+        cluster_embeddings = [reduced_embeddings[j] for j in range(len(bios)) if labels[j] == i]
         cluster_jobs = [jobs[j] for j in range(len(bios)) if labels[j] == i]
         cluster_predicted_jobs = [jobid_2_job[y_pred[j].item()] for j in range(len(bios)) if labels[j] == i]
+        cluster_gender = [g[j] for j in range(len(bios)) if labels[j] == i]
+        cluster_indivkeywords = [closest_keywords_indiv[j] for j in range(len(bios)) if labels[j] == i]
 
         # Create a NearestNeighbors object
-        nbrs = NearestNeighbors(n_neighbors=20, algorithm='ball_tree').fit(cluster_embeddings)
+        NN_centroids = NearestNeighbors(n_neighbors=10, algorithm='ball_tree').fit(cluster_embeddings)
         
-        # Find the 20 closest points to the centroid
-        distances, indices = nbrs.kneighbors([centroids[i]])
+        # Find the 10 closest points to the centroid
+        distances, indices = NN_centroids.kneighbors([centroids_reduced[i]])
         
-        #add the 20 points (cluster, keyword, job, predicted job, bio) to the dataframe
-        for j in range(20):
-            closest_points = closest_points.append({'cluster': i, 'keyword': centroids_keywords[i], 'job': cluster_jobs[indices[0][j]], 'predicted job' : cluster_predicted_jobs[indices[0][j]] , 'bio': cluster_bios[indices[0][j]]}, ignore_index=True)
+        #add the 10 points (cluster, keyword, job, predicted job, bio) to the dataframe
+        for j in range(10):
+            closest_points = closest_points.append({'cluster': i, 'cluster keyword': keywords, 'individual keyword' : cluster_indivkeywords[indices[0][j]], 'job': cluster_jobs[indices[0][j]], 'predicted job' : cluster_predicted_jobs[indices[0][j]] , 'bio': cluster_bios[indices[0][j]]}, ignore_index=True)
 
         #add the all points to the whole_clusters dataframe
         for id in range(len(cluster_bios)):
-            whole_clusters = whole_clusters.append({'cluster': i, 'keyword': centroids_keywords[i], 'job': cluster_jobs[id], 'predicted job' : cluster_predicted_jobs[id] , 'bio': cluster_bios[id]}, ignore_index=True)
-
+            whole_clusters = whole_clusters.append({'cluster': i, 'cluster keyword': keywords, 'individual keyword' : cluster_indivkeywords[id], 'sex' : cluster_gender[id] , 'job': cluster_jobs[id], 'predicted job' : cluster_predicted_jobs[id] , 'bio': cluster_bios[id]}, ignore_index=True)
 
     # save closest points to csv
     closest_points.to_csv('closest_points_'+str(group)+'.csv')
@@ -146,4 +190,4 @@ def save_clustered_bios(clusters_to_bios, group):
 #save_clustered_bios(make_analysis(0,10), 0)
 #save_clustered_bios(make_analysis(1,10), 1)
 #save_clustered_bios(make_analysis('_ErrorGlobal',5), '_ErrorGlobal')
-make_analysis('alltest',5)
+make_analysis('alltest',100)
