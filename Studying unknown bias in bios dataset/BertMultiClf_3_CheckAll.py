@@ -39,9 +39,6 @@ Masks_test=SavedData["Masks_test"]
 y_test=SavedData["y_test"]
 S_test=SavedData["g_test"]
 bio_test=SavedData["bio_test"]
-
-
-
 job_2_jobid=SavedData['job_2_jobid']
 jobid_2_job=SavedData['jobid_2_job']
 lst_jobs=list(jobid_2_job.values())
@@ -131,7 +128,7 @@ model=model_cpu.to(device)
 
 n_test=y_test.shape[0]  #  -> 138862 in total
 Curr_obsIDs=np.arange(n_test)
-np.random.shuffle(Curr_obsIDs)
+#np.random.shuffle(Curr_obsIDs)
 #Curr_obsIDs=Curr_obsIDs[:10000]
 
 var_X_select = X_test[Curr_obsIDs,:].to(device)
@@ -206,13 +203,16 @@ with open("TreatedData_test_train.pk", "rb") as f:
     data = pickle.load(f)
 
 # Select rows from each item in the dictionary
+data2save = {key: np.array(value) if np.array(value).ndim > 0 else value for key, value in data.items()}
 data2save_global = {key: np.array(value)[Lst_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
 data2save_0 = {key: np.array(value)[Lst0_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
 data2save_1 = {key: np.array(value)[Lst1_error] if np.array(value).ndim > 0 else value for key, value in data.items()}
+data2save['predicted_job'] = y_pred_labels
 data2save_global['predicted_job'] = y_pred_labels[Lst_error]
 data2save_0['predicted_job'] = y_pred_labels[Lst0_error]
 data2save_1['predicted_job'] = y_pred_labels[Lst1_error]
 
+pickle.dump(data2save, open( "Treated_alltest.pkl", "wb" ) )
 pickle.dump(data2save_global, open( "Treated_ErrorGlobal.pkl", "wb" ) )
 pickle.dump(data2save_0, open( "Treated_Error0.pkl", "wb" ) )
 pickle.dump(data2save_1, open( "Treated_Error1.pkl", "wb" ) )
