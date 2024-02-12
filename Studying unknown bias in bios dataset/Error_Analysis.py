@@ -10,6 +10,11 @@ import pandas as pd
 from sklearn.metrics import pairwise_distances_argmin
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import NearestNeighbors
+from scipy.spatial import Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from scipy.stats import gaussian_kde
+import seaborn as sns
 
 
 # Load the pkl file
@@ -90,6 +95,23 @@ def make_analysis(group,n_clusters):
     # read from .csv if saved
     embeddings = pd.read_csv('embeddings_'+str(group)+'.csv', header=None).values
 
+    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+    tsne_embeddings = tsne.fit_transform(embeddings)
+    
+    # Calculate the point density
+    xy = np.vstack([tsne_embeddings[:,0],tsne_embeddings[:,1]])
+    z = gaussian_kde(xy)(xy)
+
+    # Sort the points by density, so that the densest points are plotted last
+    idx = z.argsort()
+    x, y, z = tsne_embeddings[:,0][idx], tsne_embeddings[:,1][idx], z[idx]
+
+    plt.figure(figsize=(12,8))
+    sns.scatterplot(x=x, y=y, hue=z, palette="plasma", alpha=0.9)
+    sns.kdeplot(x=x,y=y,levels=10,fill=True,linewidths=1, cmap = "plasma", alpha=0.7)
+    plt.title('TSNE scatter-density plot of the embeddings for group ' + str(group))
+    plt.savefig('tsne_'+str(group)+'.pdf')
+
     # Reduce the dimensionality of the embeddings
     pca = PCA(n_components=5)
     reduced_embeddings = pca.fit_transform(embeddings)
@@ -124,10 +146,27 @@ def make_analysis(group,n_clusters):
     print("Number of splits : ",len(workrelated_words_list))
     print("Computing splits")
     centroid_keywords = np.full((n_clusters,n_split),"", dtype="<U20")
+
     for k in range(n_split):
         workrelated_words_split=list(workrelated_words_list[k])
         keywords_embeddings = get_embeddings(workrelated_words_split, tokenizer, Max_len=512)
         reduced_keywords_embeddings = pca.transform(keywords_embeddings)
+
+        #pca_2d = PCA(n_components=2)  # Ensure 2D for visualization
+        #reduced_keywordsembeddings_2d = pca_2d.fit_transform(keywords_embeddings)
+        #reduced_embeddings_2d = pca_2d.transform(embeddings)
+
+        # Compute the Voronoi partition
+        #vor = Voronoi(reduced_keywordsembeddings_2d)
+
+        # Plot the Voronoi diagram
+        #fig = voronoi_plot_2d(vor)
+        #plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c='blue')
+        #setting limits for the axes
+        #plt.xlim(-3, 4)
+        #plt.ylim(-3.5, 3.5)
+        #plt.savefig('voronoi_'+str(group)+'.pdf')
+
         closest_keywords_id = pairwise_distances_argmin(centroids_reduced, reduced_keywords_embeddings, metric = "manhattan")
         closest_keywords_id_indiv = pairwise_distances_argmin(reduced_embeddings, reduced_keywords_embeddings, metric = "manhattan")
         closest_keywords_indiv = [workrelated_words_split[closest_keywords_id_indiv[j]] for j in range(len(closest_keywords_id_indiv))]
@@ -146,7 +185,7 @@ def make_analysis(group,n_clusters):
     closest_bios_to_keywords = pd.DataFrame(columns = ['keyword', 'bio'])
     for i in range(len(keywords_embeddings)) :
         distances, indices = NN_keywords.kneighbors([reduced_keywords_embeddings[i]])
-        print(workrelated_words_1[i], reduced_keywords_embeddings[i], distances)
+        #print(workrelated_words_1[i], reduced_keywords_embeddings[i], distances)
         
         for j in range(12):
             closest_bios_to_keywords = closest_bios_to_keywords.append({'keyword': workrelated_words_1[i], 'bio': bios[indices[0][j]]}, ignore_index=True)
