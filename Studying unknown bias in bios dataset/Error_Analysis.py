@@ -79,21 +79,24 @@ def make_analysis(group,n_clusters):
                 output = model(ids, mask)
 
             # The final hidden state of the [CLS] token can be used as a representation of the text
-            cls_output = output[0][0].numpy()
+            cls_output = output[0][:,0,:].numpy()
+            print(cls_output.shape)
+
             # compute the average of the embeddings, weighted by masks
-            mask = mask.numpy()
-            mask = mask.flatten()
-            cls_output = cls_output * mask[:, np.newaxis]
-            embeds = np.sum(cls_output, axis=0) / np.sum(mask)
-            embeddings.append(embeds)
+            #mask = mask.numpy()
+            #mask = mask.flatten()
+            #cls_output = cls_output * mask[:, np.newaxis]
+            #embeds = np.sum(cls_output, axis=0) / np.sum(mask)
+            embeddings.append(cls_output)
 
         return embeddings
 
     # Get embeddings for all input sentences
-    #embeddings = get_embeddings(bios, tokenizer, Max_len=512)
-    #np.savetxt("embeddings_"+str(group)+".csv", embeddings, delimiter=",")
+    embeddings = get_embeddings(bios, tokenizer, Max_len=512)
+    np.savetxt("embeddings_clstoken_"+str(group)+".csv", embeddings, delimiter=",")
     # read from .csv if saved
-    embeddings = pd.read_csv('embeddings_'+str(group)+'.csv', header=None).values
+    #embeddings = pd.read_csv('embeddings_clstoken_'+str(group)+'.csv', header=None)
+    print('Embeddings shape : ',embeddings.shape)
 
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     tsne_embeddings = tsne.fit_transform(embeddings)
@@ -162,7 +165,7 @@ def make_analysis(group,n_clusters):
         # Plot the Voronoi diagram
         #fig = voronoi_plot_2d(vor)
         #plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c='blue')
-        #setting limits for the axes
+        # setting limits for the axes
         #plt.xlim(-3, 4)
         #plt.ylim(-3.5, 3.5)
         #plt.savefig('voronoi_'+str(group)+'.pdf')
@@ -180,7 +183,6 @@ def make_analysis(group,n_clusters):
     closest_points = pd.DataFrame(columns = ['cluster','cluster keyword', 'individual keyword', 'sex', 'job','predicted job', 'bio'])
     whole_clusters = pd.DataFrame(columns = ['cluster','cluster keyword', 'individual keyword', 'sex', 'job','predicted job', 'bio'])
     NN_keywords = NearestNeighbors(n_neighbors=12, algorithm='ball_tree').fit(reduced_embeddings)
-    print(len(embeddings))
 
     closest_bios_to_keywords = pd.DataFrame(columns = ['keyword', 'bio'])
     for i in range(len(keywords_embeddings)) :
