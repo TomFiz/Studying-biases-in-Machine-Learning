@@ -1,4 +1,4 @@
-# Biases-in-ML
+# Studying unknown bias
 
 This section studies the unknown biases in the bias in bios dataset.
 
